@@ -1,7 +1,7 @@
 # Stratos Membership Scheme 
-### Apache Stratos Membership Scheme for WSO2 Carbon Kernel
+### Apache Stratos Membership Scheme for WSO2 Carbon Clustering
 
-This repository includes an update for the WSO2 Carbon Kernel including a Hazelcast cluster discovery feature based on Apache Stratos messaging model. This update can be applied on existing Carbon servers for automating cluster configuration.
+This repository includes an update for the WSO2 Carbon Kernel including a Hazelcast cluster discovery feature based on Stratos messaging model. This update can be applied on existing Carbon servers for automating cluster configuration.
 
 ## How it works
 - Introduces a new membership scheme: StratosMembershipScheme
