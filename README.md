@@ -6,5 +6,4 @@ This repository includes an update for the WSO2 Carbon Kernel including a Hazelc
 ## How it works
 - Introduces a new membership scheme: StratosMembershipScheme
 - At the server startup, the above membership scheme will wait until the topology is initialized via the message broker
-- Once topology is initialized the list of members found in the given clusters will be added to the Hazelcast cluster configuration 
-- 
+- Once topology is initialized the list of members found in the given clusters will be added to the Hazelcast cluster configuration
