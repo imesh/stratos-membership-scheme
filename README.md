@@ -39,3 +39,18 @@ This repository includes an update for the WSO2 Carbon Kernel including a Hazelc
 				...
 	</clustering>
 ```
+
+- Update repository/conf/jndi.properties file and set the message broker IP address and port:
+
+```
+connectionfactoryName=TopicConnectionFactory
+java.naming.provider.url=tcp://localhost:61616
+java.naming.factory.initial=org.apache.activemq.jndi.ActiveMQInitialContextFactory
+```
+
+- Now start the carbon server:
+
+```
+cd [carbon-home]
+sh bin/wso2server.sh
+```

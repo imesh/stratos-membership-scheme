@@ -87,8 +87,6 @@ public class StratosBasedMembershipScheme implements HazelcastMembershipScheme {
             TcpIpConfig tcpIpConfig = nwConfig.getJoin().getTcpIpConfig();
             tcpIpConfig.setEnabled(true);
 
-            if (!waitForTopologyInitialization()) return;
-
             Parameter clusterIdsParameter = getParameter(PARAMETER_NAME_CLUSTER_IDS);
             if(clusterIdsParameter == null) {
                 throw new RuntimeException(PARAMETER_NAME_CLUSTER_IDS + " parameter is required for " +
@@ -97,18 +95,25 @@ public class StratosBasedMembershipScheme implements HazelcastMembershipScheme {
             String clusterIds = (String)clusterIdsParameter.getValue();
             String[] clusterIdArray = clusterIds.split(",");
 
-            for(String clusterId : clusterIdArray) {
-                org.apache.stratos.messaging.domain.topology.Cluster cluster =
-                        TopologyManager.getTopology().getCluster(clusterId);
-                if(cluster == null) {
-                    throw new RuntimeException("Cluster not found in topology: [cluster-id]" +  clusterId);
-                }
+            if (!waitForTopologyInitialization()) return;
 
-                log.info("Reading members of cluster: [cluster-id] " + clusterId);
-                for (org.apache.stratos.messaging.domain.topology.Member member : cluster.getMembers()) {
-                    tcpIpConfig.addMember(member.getDefaultPrivateIP());
-                    log.info("Member added to cluster configuration: [member-ip] " + member.getDefaultPrivateIP());
+            try {
+                TopologyManager.acquireReadLock();
+                for (String clusterId : clusterIdArray) {
+                    org.apache.stratos.messaging.domain.topology.Cluster cluster =
+                            TopologyManager.getTopology().getCluster(clusterId);
+                    if (cluster == null) {
+                        throw new RuntimeException("Cluster not found in topology: [cluster-id]" + clusterId);
+                    }
+
+                    log.info("Reading members of cluster: [cluster-id] " + clusterId);
+                    for (org.apache.stratos.messaging.domain.topology.Member member : cluster.getMembers()) {
+                        tcpIpConfig.addMember(member.getDefaultPrivateIP());
+                        log.info("Member added to cluster configuration: [member-ip] " + member.getDefaultPrivateIP());
+                    }
                 }
+            } finally {
+                TopologyManager.releaseReadLock();
             }
         } catch (Throwable t) {
             log.error("Could not initialize stratos membership scheme", t);
