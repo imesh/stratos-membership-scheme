@@ -89,8 +89,7 @@ public class StratosBasedMembershipScheme implements HazelcastMembershipScheme {
 
             Parameter clusterIdsParameter = getParameter(PARAMETER_NAME_CLUSTER_IDS);
             if(clusterIdsParameter == null) {
-                throw new RuntimeException(PARAMETER_NAME_CLUSTER_IDS + " parameter is required for " +
-                        HazelcastConstants.STRATOS_MEMBERSHIP_SCHEME + " membership scheme");
+                throw new RuntimeException(PARAMETER_NAME_CLUSTER_IDS + " parameter not found");
             }
             String clusterIds = (String)clusterIdsParameter.getValue();
             String[] clusterIdArray = clusterIds.split(",");
