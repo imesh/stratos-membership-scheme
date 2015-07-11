@@ -43,7 +43,7 @@ import org.wso2.carbon.core.ServerStatus;
 import org.wso2.carbon.core.clustering.api.CarbonCluster;
 import org.wso2.carbon.core.clustering.api.ClusterMessage;
 import org.wso2.carbon.core.clustering.hazelcast.aws.AWSBasedMembershipScheme;
-import org.wso2.carbon.core.clustering.hazelcast.mb.MessageBrokerBasedMembershipScheme;
+import org.wso2.carbon.core.clustering.hazelcast.stratos.StratosBasedMembershipScheme;
 import org.wso2.carbon.core.clustering.hazelcast.multicast.MulticastBasedMembershipScheme;
 import org.wso2.carbon.core.clustering.hazelcast.util.MemberUtils;
 import org.wso2.carbon.core.clustering.hazelcast.wka.WKABasedMembershipScheme;
@@ -379,8 +379,8 @@ public class HazelcastClusteringAgent extends ParameterAdapter implements Cluste
                                                            primaryHazelcastInstance,
                                                            sentMsgsBuffer);
             membershipScheme.init();
-        } else if (scheme.equals(HazelcastConstants.MB_MEMBERSHIP_SCHEME)) {
-            membershipScheme = new MessageBrokerBasedMembershipScheme(parameters, primaryDomain,
+        } else if (scheme.equals(HazelcastConstants.STRATOS_MEMBERSHIP_SCHEME)) {
+            membershipScheme = new StratosBasedMembershipScheme(parameters, primaryDomain,
                     primaryHazelcastConfig,
                     primaryHazelcastInstance,
                     sentMsgsBuffer);
@@ -408,13 +408,14 @@ public class HazelcastClusteringAgent extends ParameterAdapter implements Cluste
             mbrScheme = ((String) membershipSchemeParam.getValue()).trim();
         }
         if (!mbrScheme.equals(ClusteringConstants.MembershipScheme.MULTICAST_BASED) &&
-            !mbrScheme.equals(ClusteringConstants.MembershipScheme.WKA_BASED) &&
+                !mbrScheme.equals(ClusteringConstants.MembershipScheme.WKA_BASED) &&
                 !mbrScheme.equals(HazelcastConstants.AWS_MEMBERSHIP_SCHEME) &&
-                !mbrScheme.equals(HazelcastConstants.MB_MEMBERSHIP_SCHEME)) {
+                !mbrScheme.equals(HazelcastConstants.STRATOS_MEMBERSHIP_SCHEME)) {
             String msg = "Invalid membership scheme '" + mbrScheme + "'. Supported schemes are " +
                          ClusteringConstants.MembershipScheme.MULTICAST_BASED + ", " +
-                         ClusteringConstants.MembershipScheme.WKA_BASED + " & " +
-                         HazelcastConstants.AWS_MEMBERSHIP_SCHEME;
+                         ClusteringConstants.MembershipScheme.WKA_BASED + ", " +
+                         HazelcastConstants.AWS_MEMBERSHIP_SCHEME + " & " +
+                         HazelcastConstants.STRATOS_MEMBERSHIP_SCHEME;
             log.error(msg);
             throw new ClusteringFault(msg);
         }

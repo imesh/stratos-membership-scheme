@@ -34,7 +34,7 @@ public final class HazelcastConstants {
     public static final String REPLAY_MESSAGE_QUEUE = "$ReplayMessageQueue:";
 
     public static final String AWS_MEMBERSHIP_SCHEME = "aws";
-    public static final String MB_MEMBERSHIP_SCHEME = "mb";
+    public static final String STRATOS_MEMBERSHIP_SCHEME = "stratos";
 
     public static final String CLUSTER_COORDINATOR_LOCK = "$coordinator#@lock";
 

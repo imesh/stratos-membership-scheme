@@ -16,7 +16,7 @@
  * under the License.
  */
 
-package org.wso2.carbon.core.clustering.hazelcast.mb;
+package org.wso2.carbon.core.clustering.hazelcast.stratos;
 
 import com.hazelcast.config.Config;
 import com.hazelcast.config.NetworkConfig;
@@ -29,6 +29,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.stratos.messaging.message.receiver.topology.TopologyManager;
 import org.wso2.carbon.core.clustering.hazelcast.HazelcastCarbonClusterImpl;
+import org.wso2.carbon.core.clustering.hazelcast.HazelcastConstants;
 import org.wso2.carbon.core.clustering.hazelcast.HazelcastMembershipScheme;
 import org.wso2.carbon.core.clustering.hazelcast.HazelcastUtil;
 
@@ -38,27 +39,27 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * Message broker based membership scheme.
+ * Stratos based membership scheme for automating the cluster configuration via Stratos
+ * messaging model.
  */
-public class MessageBrokerBasedMembershipScheme implements HazelcastMembershipScheme {
+public class StratosBasedMembershipScheme implements HazelcastMembershipScheme {
 
-    private static final Log log = LogFactory.getLog(MessageBrokerBasedMembershipScheme.class);
+    private static final Log log = LogFactory.getLog(StratosBasedMembershipScheme.class);
+    private static final String PARAMETER_NAME_CLUSTER_IDS = "clusterIds";
+
     private final Map<String, Parameter> parameters;
-    private final String primaryDomain;
     private final NetworkConfig nwConfig;
     private HazelcastInstance primaryHazelcastInstance;
     private HazelcastCarbonClusterImpl carbonCluster;
     private final List<ClusteringMessage> messageBuffer;
-    private Member localMember;
     private boolean shuttingDown;
 
-    public MessageBrokerBasedMembershipScheme(Map<String, Parameter> parameters,
-                                    String primaryDomain,
-                                    Config config,
-                                    HazelcastInstance primaryHazelcastInstance,
-                                    List<ClusteringMessage> messageBuffer) {
+    public StratosBasedMembershipScheme(Map<String, Parameter> parameters,
+                                        String primaryDomain,
+                                        Config config,
+                                        HazelcastInstance primaryHazelcastInstance,
+                                        List<ClusteringMessage> messageBuffer) {
         this.parameters = parameters;
-        this.primaryDomain = primaryDomain;
         this.primaryHazelcastInstance = primaryHazelcastInstance;
         this.messageBuffer = messageBuffer;
         this.nwConfig = config.getNetworkConfig();
@@ -71,7 +72,6 @@ public class MessageBrokerBasedMembershipScheme implements HazelcastMembershipSc
 
     @Override
     public void setLocalMember(Member localMember) {
-        this.localMember = localMember;
     }
 
     @Override
@@ -87,69 +87,86 @@ public class MessageBrokerBasedMembershipScheme implements HazelcastMembershipSc
             TcpIpConfig tcpIpConfig = nwConfig.getJoin().getTcpIpConfig();
             tcpIpConfig.setEnabled(true);
 
-            ExecutorService executorService = Executors.newFixedThreadPool(1);
-            MessageBrokerTopologyEventReceiver topologyEventReceiver = new MessageBrokerTopologyEventReceiver();
-            topologyEventReceiver.setExecutorService(executorService);
-            topologyEventReceiver.execute();
-            if (log.isInfoEnabled()) {
-                log.info("Topology receiver thread started");
-            }
+            if (!waitForTopologyInitialization()) return;
 
-            final Thread currentThread = Thread.currentThread();
-            Runtime.getRuntime().addShutdownHook(new Thread() {
-                public void run() {
-                    shuttingDown = true;
-                    try {
-                        currentThread.join();
-                    } catch (InterruptedException ignore) {
-                    }
+            Parameter clusterIdsParameter = getParameter(PARAMETER_NAME_CLUSTER_IDS);
+            if(clusterIdsParameter == null) {
+                throw new RuntimeException(PARAMETER_NAME_CLUSTER_IDS + " parameter is required for " +
+                        HazelcastConstants.STRATOS_MEMBERSHIP_SCHEME + " membership scheme");
+            }
+            String clusterIds = (String)clusterIdsParameter.getValue();
+            String[] clusterIdArray = clusterIds.split(",");
+
+            for(String clusterId : clusterIdArray) {
+                org.apache.stratos.messaging.domain.topology.Cluster cluster =
+                        TopologyManager.getTopology().getCluster(clusterId);
+                if(cluster == null) {
+                    throw new RuntimeException("Cluster not found in topology: [cluster-id]" +  clusterId);
                 }
-            });
 
-            log.info("Waiting for topology to be initialized...");
-            while (!TopologyManager.getTopology().isInitialized()) {
-                try {
-                    if(shuttingDown) {
-                        return;
-                    }
-                    Thread.sleep(1000);
-                } catch (InterruptedException ignore) {
-                    return;
+                log.info("Reading members of cluster: [cluster-id] " + clusterId);
+                for (org.apache.stratos.messaging.domain.topology.Member member : cluster.getMembers()) {
+                    tcpIpConfig.addMember(member.getDefaultPrivateIP());
+                    log.info("Member added to cluster configuration: [member-ip] " + member.getDefaultPrivateIP());
                 }
-            }
-            log.info("Topology initialized");
-
-            Parameter clusterIdParameter = getParameter("cluster-id");
-            if(clusterIdParameter == null) {
-                throw new RuntimeException("cluster-id parameter not defined");
-            }
-            String clusterId = (String)clusterIdParameter.getValue();
-            org.apache.stratos.messaging.domain.topology.Cluster cluster =
-                    TopologyManager.getTopology().getCluster(clusterId);
-            if (cluster == null) {
-                throw new RuntimeException("Cluster not found in topology: [cluster-id] " + clusterId);
-            }
-
-            log.info("Reading members of cluster: [cluster-id] " + clusterId);
-            for (org.apache.stratos.messaging.domain.topology.Member member : cluster.getMembers()) {
-                tcpIpConfig.addMember(member.getDefaultPrivateIP());
-                log.info("Member added to cluster configuration: " + member.getDefaultPrivateIP());
             }
         } catch (Throwable t) {
-            log.error("Could not initialize membership scheme", t);
+            log.error("Could not initialize stratos membership scheme", t);
         }
+    }
+
+    /**
+     * Subscribe to topology topic and wait until local topology instance get initialized.
+     * @return
+     */
+    private boolean waitForTopologyInitialization() {
+        ExecutorService executorService = Executors.newFixedThreadPool(1);
+        StratosTopologyEventReceiver topologyEventReceiver = new StratosTopologyEventReceiver();
+        topologyEventReceiver.setExecutorService(executorService);
+        topologyEventReceiver.execute();
+        if (log.isInfoEnabled()) {
+            log.info("Topology receiver thread started");
+        }
+
+        final Thread currentThread = Thread.currentThread();
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+            public void run() {
+                shuttingDown = true;
+                try {
+                    currentThread.join();
+                } catch (InterruptedException ignore) {
+                }
+            }
+        });
+
+        log.info("Waiting for topology to be initialized...");
+        while (!TopologyManager.getTopology().isInitialized()) {
+            try {
+                if(shuttingDown) {
+                    return false;
+                }
+                Thread.sleep(1000);
+            } catch (InterruptedException ignore) {
+                return false;
+            }
+        }
+        log.info("Topology initialized");
+        return true;
     }
 
     @Override
     public void joinGroup() throws ClusteringFault {
-        primaryHazelcastInstance.getCluster().addMembershipListener(new MessageBrokerMembershipListener());
+        primaryHazelcastInstance.getCluster().addMembershipListener(new StratosMembershipListener());
     }
 
     public Parameter getParameter(String name) {
         return parameters.get(name);
     }
 
-    private class MessageBrokerMembershipListener implements MembershipListener {
+    /**
+     * Stratos membership listener.
+     */
+    private class StratosMembershipListener implements MembershipListener {
 
         @Override
         public void memberAdded(MembershipEvent membershipEvent) {
@@ -173,6 +190,7 @@ public class MessageBrokerBasedMembershipScheme implements HazelcastMembershipSc
             log.info("Member left [" + member.getUuid() + "]: " + member.getInetSocketAddress().toString());
         }
 
+        @Override
         public void memberAttributeChanged(MemberAttributeEvent memberAttributeEvent) {
             if(log.isDebugEnabled()) {
                 log.debug("Member attribute changed: [" + memberAttributeEvent.getKey() + "] " +

@@ -16,12 +16,12 @@
  * under the License.
  */
 
-package org.wso2.carbon.core.clustering.hazelcast.mb;
+package org.wso2.carbon.core.clustering.hazelcast.stratos;
 
 import org.apache.stratos.messaging.message.receiver.topology.TopologyEventReceiver;
 
 /**
  * Message broker topology event receiver.
  */
-public class MessageBrokerTopologyEventReceiver extends TopologyEventReceiver {
+public class StratosTopologyEventReceiver extends TopologyEventReceiver {
 }
