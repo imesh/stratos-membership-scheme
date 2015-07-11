@@ -14,16 +14,18 @@ This repository includes an update for the WSO2 Carbon Kernel including a Hazelc
 
 ```
 └── repository
-    └── components
-        ├── droppings
-        │   ├── org.apache.stratos.common_4.1.0.jar
-        │   └── org.apache.stratos.messaging_4.1.0.jar
-        ├── lib
-        │   ├── activemq-client-5.10.0.jar
-        │   └── geronimo-j2ee-management_1.1_spec-1.0.1.jar
-        └── patches
-            └── patch9999
-                └── org.wso2.carbon.core-4.4.0.jar
+    ├── components
+    │   ├── dropins
+    │   │   ├── org.apache.stratos.common_4.1.0.jar
+    │   │   └── org.apache.stratos.messaging_4.1.0.jar
+    │   ├── lib
+    │   │   ├── activemq-client-5.10.0.jar
+    │   │   └── geronimo-j2ee-management_1.1_spec-1.0.1.jar
+    │   └── patches
+    │       └── patch9999
+    │           └── org.wso2.carbon.core-4.4.0.jar
+    └── conf
+        └── jndi.properties
 ```
 
 - Update the repository/conf/axis2/axis2.xml as follows:
